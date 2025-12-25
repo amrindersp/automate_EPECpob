@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select Columns</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <h2>Select Required Columns</h2>
+
+    <form action="{{ url_for('select_columns') }}" method="post">
+
+        <h3>Present Day POB</h3>
+
+        <label>NED Pass Column:</label>
+        <select name="pob_ned" required>
+            {% for col in pob_cols %}
+                <option value="{{ col }}">{{ col }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Name Column:</label>
+        <select name="pob_name" required>
+            {% for col in pob_cols %}
+                <option value="{{ col }}">{{ col }}</option>
+            {% endfor %}
+        </select>
+
+        <h3>Portal POB</h3>
+
+        <label>NED Pass Column:</label>
+        <select name="portal_ned" required>
+            {% for col in portal_cols %}
+                <option value="{{ col }}">{{ col }}</option>
+            {% endfor %}
+        </select>
+
+        <label>Name Column:</label>
+        <select name="portal_name" required>
+            {% for col in portal_cols %}
+                <option value="{{ col }}">{{ col }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Continue</button>
+    </form>
+</div>
+
+</body>
+</html>

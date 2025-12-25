@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enter Manifest Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <h2>Enter Manifest Details</h2>
+
+    <form action="{{ url_for('user_inputs') }}" method="post">
+
+        <h3>RFM Details</h3>
+
+        <label>Passenger Category:</label>
+        <input type="text" name="rfm_category" required>
+
+        <label>Travelling Vendor Code:</label>
+        <input type="text" name="vendor_code" required>
+
+        <label>Vendor Name:</label>
+        <input type="text" name="vendor_name" required>
+
+        <label>Gender:</label>
+        <select name="gender" required>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+        </select>
+
+        <label>Originating Point:</label>
+        <input type="text" name="rfm_origin" required>
+
+        <label>Destination Point:</label>
+        <input type="text" name="rfm_destination" required>
+
+        <label>Charge:</label>
+        <input type="text" name="charge" required>
+
+        <h3>Manifest Details</h3>
+
+        <label>Passenger Weight:</label>
+        <input type="number" name="passenger_weight" required>
+
+        <label>Baggage Weight:</label>
+        <input type="number" name="baggage_weight" required>
+
+        <label>Time Reported:</label>
+        <input type="text" name="time_reported" required>
+
+        <h3>Return Manifest Details</h3>
+
+        <label>Passenger Category:</label>
+        <input type="text" name="return_category" required>
+
+        <label>Supplier:</label>
+        <input type="text" name="supplier" required>
+
+        <label>Originating Point:</label>
+        <input type="text" name="return_origin" required>
+
+        <label>Destination Point:</label>
+        <input type="text" name="return_destination" required>
+
+        <button type="submit">Generate Output Files</button>
+    </form>
+</div>
+
+</body>
+</html>

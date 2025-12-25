@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Excel Files</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <h1>EPEC POB Automation</h1>
+
+    <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+        <label>Upload Present Day POB Excel:</label>
+        <input type="file" name="pob" accept=".xlsx,.xls" required>
+
+        <label>Upload Portal POB Excel:</label>
+        <input type="file" name="portal" accept=".xlsx,.xls" required>
+
+        <button type="submit">Upload Files</button>
+    </form>
+</div>
+
+</body>
+</html>

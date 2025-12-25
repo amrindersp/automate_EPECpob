@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Duplicate Entries Found</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <h2>⚠ Duplicate Entries Found</h2>
+
+    <div class="warning">
+        Duplicate NED / Smart Card numbers were detected.<br><br>
+        Do you want to continue or re-upload corrected files?
+    </div>
+
+    <form action="{{ url_for('duplicate_decision') }}" method="post">
+        <button type="submit" name="decision" value="continue">
+            Continue Anyway
+        </button>
+
+        <button type="submit" name="decision" value="reupload" class="secondary-btn">
+            Re-upload Files
+        </button>
+    </form>
+</div>
+
+</body>
+</html>

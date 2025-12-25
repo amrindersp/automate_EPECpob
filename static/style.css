@@ -1,0 +1,101 @@
+/* ---- Global Background ---- */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(
+        rgba(255, 255, 255, 0.85),
+        rgba(255, 255, 255, 0.85)
+    ),
+    url("/static/background.jpg") no-repeat center center fixed;
+    background-size: cover;
+}
+
+/* ---- Main Container ---- */
+.container {
+    max-width: 800px;
+    margin: 60px auto;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* ---- Headings ---- */
+h1, h2, h3 {
+    text-align: center;
+    color: #0b3c5d;
+    margin-bottom: 20px;
+}
+
+/* ---- Labels ---- */
+label {
+    font-weight: 600;
+    margin-top: 15px;
+    display: block;
+    color: #333;
+}
+
+/* ---- Inputs & Select ---- */
+input[type="file"],
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+/* ---- Buttons ---- */
+button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 25px;
+    background: linear-gradient(135deg, #0b3c5d, #328cc1);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+/* ---- Secondary Buttons ---- */
+.secondary-btn {
+    background: linear-gradient(135deg, #6c757d, #495057);
+}
+
+/* ---- Alerts ---- */
+.warning {
+    background: #fff3cd;
+    color: #856404;
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid #ffeeba;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* ---- Result Box ---- */
+.result-box {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 6px solid #0b3c5d;
+    margin-top: 20px;
+}
+
+/* ---- Links ---- */
+a {
+    text-decoration: none;
+    color: #0b3c5d;
+    font-weight: bold;
+}
