@@ -1,29 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Duplicate Entries Found</title>
+    <title>Duplicate NED Entries Found</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
 <div class="container">
-    <h2>⚠ Duplicate Entries Found</h2>
+    <h2>Duplicate NED Pass Numbers Found</h2>
 
     <div class="warning">
-        Duplicate NED / Smart Card numbers were detected.<br><br>
-        Do you want to continue or re-upload corrected files?
+        <p>
+            Duplicates were detected in
+            {% if pob_dup %}<strong>POB</strong>{% endif %}
+            {% if pob_dup and portal_dup %} and {% endif %}
+            {% if portal_dup %}<strong>Portal</strong>{% endif %}
+            files.
+        </p>
+        <p>
+            You can download the uploaded Excel files with duplicate NED cells highlighted,
+            review and fix them, then re-upload; or continue with current files.
+        </p>
     </div>
+
+    <a class="btn" href="{{ url_for('download_duplicates') }}">Download highlighted upload</a>
 
     <form action="{{ url_for('duplicate_decision') }}" method="post">
         <button type="submit" name="decision" value="continue">
             Continue Anyway
         </button>
-
         <button type="submit" name="decision" value="reupload" class="secondary-btn">
             Re-upload Files
         </button>
     </form>
 </div>
-
 </body>
 </html>

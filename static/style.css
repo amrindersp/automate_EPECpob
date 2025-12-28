@@ -1,27 +1,35 @@
 /* ---- Global Background ---- */
+
 body {
     margin: 0;
     padding: 0;
     font-family: "Segoe UI", Arial, sans-serif;
     background: linear-gradient(
-        rgba(255, 255, 255, 0.85),
-        rgba(255, 255, 255, 0.85)
+        rgba(0, 0, 0, 0.6),
+        rgba(0, 0, 0, 0.6)
     ),
     url("/static/background.jpg") no-repeat center center fixed;
     background-size: cover;
+    display: flex;
+    align-items: center;      /* vertical center */
+    min-height: 100vh;
 }
 
 /* ---- Main Container ---- */
+
 .container {
-    max-width: 800px;
-    margin: 60px auto;
+    width: 40%; 
+    margin-left: 10%;          /* about 10% from left edge */
+    margin-top: 40px;          /* small top margin so it is not stuck to top */
+    margin-bottom: 40px;
     padding: 30px;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.6);
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
 
 /* ---- Headings ---- */
+
 h1, h2, h3 {
     text-align: center;
     color: #0b3c5d;
@@ -29,6 +37,7 @@ h1, h2, h3 {
 }
 
 /* ---- Labels ---- */
+
 label {
     font-weight: 600;
     margin-top: 15px;
@@ -37,6 +46,7 @@ label {
 }
 
 /* ---- Inputs & Select ---- */
+
 input[type="file"],
 input[type="text"],
 input[type="number"],
@@ -46,9 +56,11 @@ select {
     margin-top: 8px;
     border-radius: 6px;
     border: 1px solid #ccc;
+    box-sizing: border-box;
 }
 
 /* ---- Buttons ---- */
+
 button {
     width: 100%;
     padding: 12px;
@@ -69,11 +81,36 @@ button:hover {
 }
 
 /* ---- Secondary Buttons ---- */
+
 .secondary-btn {
     background: linear-gradient(135deg, #6c757d, #495057);
 }
 
+/* ---- Link styled as primary button ---- */
+
+.btn {
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+    margin-top: 20px;
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 8px;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
 /* ---- Alerts ---- */
+
 .warning {
     background: #fff3cd;
     color: #856404;
@@ -85,6 +122,7 @@ button:hover {
 }
 
 /* ---- Result Box ---- */
+
 .result-box {
     background: #f8f9fa;
     padding: 20px;
@@ -94,6 +132,7 @@ button:hover {
 }
 
 /* ---- Links ---- */
+
 a {
     text-decoration: none;
     color: #0b3c5d;

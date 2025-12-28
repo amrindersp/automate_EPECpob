@@ -5,20 +5,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
 <div class="container">
-    <h1>EPEC POB Automation</h1>
+    <h1>NED Pass Comparison Tool</h1>
+    <form method="post" enctype="multipart/form-data">
+        <label for="pob">POB Excel File</label>
+        <input type="file" name="pob" id="pob" accept=".xlsx,.xls" required>
 
-    <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
-        <label>Upload Present Day POB Excel:</label>
-        <input type="file" name="pob" accept=".xlsx,.xls" required>
+        <label for="portal">Portal Excel File</label>
+        <input type="file" name="portal" id="portal" accept=".xlsx,.xls" required>
 
-        <label>Upload Portal POB Excel:</label>
-        <input type="file" name="portal" accept=".xlsx,.xls" required>
-
-        <button type="submit">Upload Files</button>
+        <button type="submit">Upload &amp; Continue</button>
     </form>
 </div>
-
 </body>
 </html>

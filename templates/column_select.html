@@ -5,47 +5,40 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
 <div class="container">
-    <h2>Select Required Columns</h2>
+    <h2>Select NED and Name Columns</h2>
 
-    <form action="{{ url_for('select_columns') }}" method="post">
-
-        <h3>Present Day POB</h3>
-
-        <label>NED Pass Column:</label>
-        <select name="pob_ned" required>
-            {% for col in pob_cols %}
-                <option value="{{ col }}">{{ col }}</option>
+    <form method="post">
+        <label for="pob_ned">POB NED Pass Column</label>
+        <select name="pob_ned" id="pob_ned" required>
+            {% for c in pob_cols %}
+            <option value="{{ c }}">{{ c }}</option>
             {% endfor %}
         </select>
 
-        <label>Name Column:</label>
-        <select name="pob_name" required>
-            {% for col in pob_cols %}
-                <option value="{{ col }}">{{ col }}</option>
+        <label for="pob_name">POB Name Column</label>
+        <select name="pob_name" id="pob_name" required>
+            {% for c in pob_cols %}
+            <option value="{{ c }}">{{ c }}</option>
             {% endfor %}
         </select>
 
-        <h3>Portal POB</h3>
-
-        <label>NED Pass Column:</label>
-        <select name="portal_ned" required>
-            {% for col in portal_cols %}
-                <option value="{{ col }}">{{ col }}</option>
+        <label for="portal_ned">Portal NED Pass Column</label>
+        <select name="portal_ned" id="portal_ned" required>
+            {% for c in portal_cols %}
+            <option value="{{ c }}">{{ c }}</option>
             {% endfor %}
         </select>
 
-        <label>Name Column:</label>
-        <select name="portal_name" required>
-            {% for col in portal_cols %}
-                <option value="{{ col }}">{{ col }}</option>
+        <label for="portal_name">Portal Name Column</label>
+        <select name="portal_name" id="portal_name" required>
+            {% for c in portal_cols %}
+            <option value="{{ c }}">{{ c }}</option>
             {% endfor %}
         </select>
 
-        <button type="submit">Continue</button>
+        <button type="submit">Check Duplicates</button>
     </form>
 </div>
-
 </body>
 </html>

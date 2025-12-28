@@ -5,28 +5,15 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
 <div class="container">
-    <h2>Process Completed Successfully</h2>
+    <h2>Processing Result</h2>
 
     <div class="result-box">
-        <p>
-            <strong>Number of Persons to be Manifested as:</strong>
-            {{ manifest_count }}
-        </p>
-
-        <p style="margin-top: 15px;">
-            <strong>Number of Persons to be De-Manifested as:</strong>
-            {{ return_count }}
-        </p>
+        <p>Records missing in Portal (for RFM): <strong>{{ manifest_count }}</strong></p>
+        <p>Records missing in POB (for Return Manifest): <strong>{{ return_count }}</strong></p>
     </div>
 
-    <br>
-
-    <a href="{{ url_for('download') }}">⬇ Download Final Excel Files</a>
-    <br><br>
-    <a href="{{ url_for('upload') }}">⬅ Upload New Files</a>
+    <a class="btn" href="{{ url_for('download') }}">Download Final Output Excel</a>
 </div>
-
 </body>
 </html>
