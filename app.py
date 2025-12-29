@@ -1,11 +1,30 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file
-import pandas as pd
+import os
+import uuid
 from io import BytesIO
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    send_file,
+    session,
+)
+import pandas as pd
 from openpyxl.styles import PatternFill
+
+# ---------------- BASIC SETUP ----------------
 
 app = Flask(__name__)
 
-DATA = {}
+# Secret key for sessions (use an env var in production)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
+
+# Folder to store per-session temporary Excel files
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TMP_DIR = os.path.join(BASE_DIR, "tmp")
+os.makedirs(TMP_DIR, exist_ok=True)
 
 
 # --------- Utility: critical cleaning for NED columns ---------
@@ -23,11 +42,10 @@ def clean_ned_column(df, col_name):
     """
     s = df[col_name].astype(str).str.strip()
 
-    # Normalize empties
     empty_markers = {"", "nan", "none", "null", "na", "n/a"}
     mask_empty_like = s.str.lower().isin(empty_markers)
 
-    # Identify values that have no digits at all (pure text)
+    # Values that have no digits at all (pure text)
     mask_no_digits = ~s.str.contains(r"\d", regex=True)
 
     # Consider last 15 rows as footer zone
@@ -46,17 +64,70 @@ def clean_ned_column(df, col_name):
     return df_clean
 
 
+# --------- Helpers to read/write per-session files and data ---------
+
+def get_job_id():
+    """Ensure each browser session has a unique job id."""
+    if "job_id" not in session:
+        session["job_id"] = str(uuid.uuid4())
+    return session["job_id"]
+
+
+def get_path(name):
+    """Build a file path in tmp folder for this job."""
+    job_id = get_job_id()
+    filename = f"{job_id}_{name}.xlsx"
+    return os.path.join(TMP_DIR, filename)
+
+
+def save_df(df, name):
+    """Save a dataframe for this session."""
+    path = get_path(name)
+    df.to_excel(path, index=False)
+    return path
+
+
+def load_df(name):
+    """Load a dataframe for this session."""
+    path = get_path(name)
+    return pd.read_excel(path)
+
+
+def save_duplicate_workbook(output_bytesio):
+    """Save duplicate-highlight workbook for this session."""
+    job_id = get_job_id()
+    filename = f"{job_id}_duplicates.xlsx"
+    path = os.path.join(TMP_DIR, filename)
+    with open(path, "wb") as f:
+        f.write(output_bytesio.getvalue())
+    session["duplicate_path"] = path
+
+
 # ---------------- STEP 1 : UPLOAD ----------------
 
 @app.route("/", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
-        DATA.clear()
-        DATA["pob_df"] = pd.read_excel(request.files["pob"])
-        DATA["portal_df"] = pd.read_excel(request.files["portal"])
-        DATA["pob_cols"] = DATA["pob_df"].columns.tolist()
-        DATA["portal_cols"] = DATA["portal_df"].columns.tolist()
+        # Reset job and simple session data
+        session.clear()
+        job_id = get_job_id()
+
+        pob_file = request.files["pob"]
+        portal_file = request.files["portal"]
+
+        pob_df = pd.read_excel(pob_file)
+        portal_df = pd.read_excel(portal_file)
+
+        # Store column names only (lightweight) in session
+        session["pob_cols"] = list(pob_df.columns)
+        session["portal_cols"] = list(portal_df.columns)
+
+        # Save raw dataframes per session
+        save_df(pob_df, "pob_raw")
+        save_df(portal_df, "portal_raw")
+
         return redirect(url_for("select_columns"))
+
     return render_template("upload.html")
 
 
@@ -64,22 +135,37 @@ def upload():
 
 @app.route("/select_columns", methods=["GET", "POST"])
 def select_columns():
-    if request.method == "POST":
-        DATA["pob_ned"] = request.form["pob_ned"]
-        DATA["pob_name"] = request.form["pob_name"]
-        DATA["portal_ned"] = request.form["portal_ned"]
-        DATA["portal_name"] = request.form["portal_name"]
+    pob_cols = session.get("pob_cols")
+    portal_cols = session.get("portal_cols")
 
-        # Apply critical cleaning to selected NED columns
-        DATA["pob_df"] = clean_ned_column(DATA["pob_df"], DATA["pob_ned"])
-        DATA["portal_df"] = clean_ned_column(DATA["portal_df"], DATA["portal_ned"])
+    if pob_cols is None or portal_cols is None:
+        return redirect(url_for("upload"))
+
+    if request.method == "POST":
+        session["pob_ned"] = request.form["pob_ned"]
+        session["pob_name"] = request.form["pob_name"]
+        session["portal_ned"] = request.form["portal_ned"]
+        session["portal_name"] = request.form["portal_name"]
+
+        # Load raw data, clean selected NED columns, save cleaned versions
+        pob_df = load_df("pob_raw")
+        portal_df = load_df("portal_raw")
+
+        pob_ned = session["pob_ned"]
+        portal_ned = session["portal_ned"]
+
+        pob_df_clean = clean_ned_column(pob_df, pob_ned)
+        portal_df_clean = clean_ned_column(portal_df, portal_ned)
+
+        save_df(pob_df_clean, "pob_clean")
+        save_df(portal_df_clean, "portal_clean")
 
         return redirect(url_for("check_duplicates"))
 
     return render_template(
         "column_select.html",
-        pob_cols=DATA["pob_cols"],
-        portal_cols=DATA["portal_cols"],
+        pob_cols=pob_cols,
+        portal_cols=portal_cols,
     )
 
 
@@ -87,13 +173,17 @@ def select_columns():
 
 @app.route("/check_duplicates")
 def check_duplicates():
-    pob_col = DATA["pob_ned"]
-    portal_col = DATA["portal_ned"]
-    pob = DATA["pob_df"]
-    portal = DATA["portal_df"]
+    pob_ned = session.get("pob_ned")
+    portal_ned = session.get("portal_ned")
 
-    pob_dup_mask = pob[pob_col].duplicated(keep=False)
-    portal_dup_mask = portal[portal_col].duplicated(keep=False)
+    if pob_ned is None or portal_ned is None:
+        return redirect(url_for("upload"))
+
+    pob = load_df("pob_clean")
+    portal = load_df("portal_clean")
+
+    pob_dup_mask = pob[pob_ned].duplicated(keep=False)
+    portal_dup_mask = portal[portal_ned].duplicated(keep=False)
 
     pob_dup = pob_dup_mask.any()
     portal_dup = portal_dup_mask.any()
@@ -112,23 +202,23 @@ def check_duplicates():
             yellow_fill = PatternFill(
                 start_color="FFFF00",
                 end_color="FFFF00",
-                fill_type="solid"
+                fill_type="solid",
             )
 
             # POB duplicates
-            pob_ned_idx = pob.columns.get_loc(pob_col) + 1
-            for i, is_dup in enumerate(pob_dup_mask, start=2):  # row 1 header
+            pob_ned_idx = pob.columns.get_loc(pob_ned) + 1
+            for i, is_dup in enumerate(pob_dup_mask, start=2):
                 if is_dup:
                     pob_ws.cell(row=i, column=pob_ned_idx).fill = yellow_fill
 
             # PORTAL duplicates
-            portal_ned_idx = portal.columns.get_loc(portal_col) + 1
+            portal_ned_idx = portal.columns.get_loc(portal_ned) + 1
             for i, is_dup in enumerate(portal_dup_mask, start=2):
                 if is_dup:
                     portal_ws.cell(row=i, column=portal_ned_idx).fill = yellow_fill
 
         output.seek(0)
-        DATA["duplicate_file"] = output
+        save_duplicate_workbook(output)
 
         return render_template(
             "duplicate_warning.html",
@@ -148,12 +238,11 @@ def duplicate_decision():
 
 @app.route("/download_duplicates")
 def download_duplicates():
-    buf = DATA.get("duplicate_file")
-    if buf is None:
+    path = session.get("duplicate_path")
+    if not path or not os.path.exists(path):
         return redirect(url_for("upload"))
-    buf.seek(0)
     return send_file(
-        buf,
+        path,
         download_name="Uploaded_with_Duplicates_Highlighted.xlsx",
         as_attachment=True,
     )
@@ -163,8 +252,12 @@ def download_duplicates():
 
 @app.route("/user_inputs", methods=["GET", "POST"])
 def user_inputs():
+    # Ensure data uploaded and columns selected
+    if "pob_ned" not in session or "portal_ned" not in session:
+        return redirect(url_for("upload"))
+
     if request.method == "POST":
-        DATA["inputs"] = request.form.to_dict()
+        session["inputs"] = request.form.to_dict()
         return redirect(url_for("generate"))
     return render_template("user_inputs.html")
 
@@ -173,60 +266,77 @@ def user_inputs():
 
 @app.route("/generate")
 def generate():
-    pob = DATA["pob_df"]
-    portal = DATA["portal_df"]
+    if "inputs" not in session:
+        return redirect(url_for("upload"))
 
-    missing_in_portal = pob[~pob[DATA["pob_ned"]].isin(portal[DATA["portal_ned"]])]
-    missing_in_pob = portal[~portal[DATA["portal_ned"]].isin(pob[DATA["pob_ned"]])]
+    inputs = session["inputs"]
+    pob_ned = session["pob_ned"]
+    portal_ned = session["portal_ned"]
+    pob_name = session["pob_name"]
+    portal_name = session["portal_name"]
 
-    DATA["manifest_count"] = len(missing_in_portal)
-    DATA["return_count"] = len(missing_in_pob)
+    pob = load_df("pob_clean")
+    portal = load_df("portal_clean")
+
+    missing_in_portal = pob[~pob[pob_ned].isin(portal[portal_ned])]
+    missing_in_pob = portal[~portal[portal_ned].isin(pob[pob_ned])]
+
+    manifest_count = len(missing_in_portal)
+    return_count = len(missing_in_pob)
+
+    session["manifest_count"] = manifest_count
+    session["return_count"] = return_count
 
     # RFM
-    DATA["rfm"] = pd.DataFrame({
-        "Passenger Category": DATA["inputs"]["rfm_category"],
-        "NED Pass No.": missing_in_portal[DATA["pob_ned"]],
-        "Travelling Vendor Code": DATA["inputs"]["vendor_code"],
-        "Vendor Name": DATA["inputs"]["vendor_name"],
-        "Vendor Employee Name": missing_in_portal[DATA["pob_name"]],
-        "Gender": DATA["inputs"]["gender"],
+    rfm = pd.DataFrame({
+        "Passenger Category": inputs["rfm_category"],
+        "NED Pass No.": missing_in_portal[pob_ned],
+        "Travelling Vendor Code": inputs["vendor_code"],
+        "Vendor Name": inputs["vendor_name"],
+        "Vendor Employee Name": missing_in_portal[pob_name],
+        "Gender": inputs["gender"],
         "Designation": "",
-        "Originating Point": DATA["inputs"]["rfm_origin"],
-        "Destination Point": DATA["inputs"]["rfm_destination"],
+        "Originating Point": inputs["rfm_origin"],
+        "Destination Point": inputs["rfm_destination"],
         "": "",
-        "Charge": DATA["inputs"]["charge"],
+        "Charge": inputs["charge"],
     })
 
     # Manifest
-    DATA["manifest"] = pd.DataFrame({
-        "Passenger Weight": DATA["inputs"]["passenger_weight"],
-        "Baggage Weight": DATA["inputs"]["baggage_weight"],
+    manifest = pd.DataFrame({
+        "Passenger Weight": inputs["passenger_weight"],
+        "Baggage Weight": inputs["baggage_weight"],
         "": "",
         " ": "",
         "  ": "",
-        "Time Reported": DATA["inputs"]["time_reported"],
-    }, index=DATA["rfm"].index)
+        "Time Reported": inputs["time_reported"],
+    }, index=rfm.index)
 
     # Return Manifest
-    DATA["return_manifest"] = pd.DataFrame({
-        "Passenger Category": DATA["inputs"]["return_category"],
-        "Smart Card No.": missing_in_pob[DATA["portal_ned"]],
-        "Supplier": DATA["inputs"]["supplier"],
-        "Vendor Employee Name": missing_in_pob[DATA["portal_name"]],
-        "Gender": DATA["inputs"]["gender"],
+    return_manifest = pd.DataFrame({
+        "Passenger Category": inputs["return_category"],
+        "Smart Card No.": missing_in_pob[portal_ned],
+        "Supplier": inputs["supplier"],
+        "Vendor Employee Name": missing_in_pob[portal_name],
+        "Gender": inputs["gender"],
         "Designation": "",
         "": "",
-        "Charge": DATA["inputs"]["charge"],
-        "Pax wt.": DATA["inputs"]["passenger_weight"],
-        "Baggage": DATA["inputs"]["baggage_weight"],
-        "Originating Point": DATA["inputs"]["return_origin"],
-        "Destination Point": DATA["inputs"]["return_destination"],
+        "Charge": inputs["charge"],
+        "Pax wt.": inputs["passenger_weight"],
+        "Baggage": inputs["baggage_weight"],
+        "Originating Point": inputs["return_origin"],
+        "Destination Point": inputs["return_destination"],
     })
+
+    # Save final dataframes for this session
+    save_df(rfm, "rfm_final")
+    save_df(manifest, "manifest_final")
+    save_df(return_manifest, "return_manifest_final")
 
     return render_template(
         "result.html",
-        manifest_count=DATA["manifest_count"],
-        return_count=DATA["return_count"],
+        manifest_count=manifest_count,
+        return_count=return_count,
     )
 
 
@@ -234,13 +344,23 @@ def generate():
 
 @app.route("/download")
 def download():
+    # Load per-session final dataframes
+    rfm = load_df("rfm_final")
+    manifest = load_df("manifest_final")
+    return_manifest = load_df("return_manifest_final")
+
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        DATA["rfm"].to_excel(writer, index=False, sheet_name="RFM")
-        DATA["manifest"].to_excel(writer, index=False, sheet_name="Manifest")
-        DATA["return_manifest"].to_excel(writer, index=False, sheet_name="Return Manifest")
+        rfm.to_excel(writer, index=False, sheet_name="RFM")
+        manifest.to_excel(writer, index=False, sheet_name="Manifest")
+        return_manifest.to_excel(writer, index=False, sheet_name="Return Manifest")
     output.seek(0)
-    return send_file(output, download_name="Final_Output.xlsx", as_attachment=True)
+
+    return send_file(
+        output,
+        download_name="Final_Output.xlsx",
+        as_attachment=True,
+    )
 
 
 if __name__ == "__main__":
