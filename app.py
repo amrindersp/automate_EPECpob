@@ -11,6 +11,7 @@ from flask import (
     send_file,
     session,
 )
+
 import pandas as pd
 from openpyxl.styles import PatternFill
 
@@ -26,7 +27,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TMP_DIR = os.path.join(BASE_DIR, "tmp")
 os.makedirs(TMP_DIR, exist_ok=True)
 
-
 # --------- Utility: critical cleaning for NED columns ---------
 
 def clean_ned_column(df, col_name):
@@ -41,7 +41,6 @@ def clean_ned_column(df, col_name):
       * row lies in the last 15 rows of the file
     """
     s = df[col_name].astype(str).str.strip()
-
     empty_markers = {"", "nan", "none", "null", "na", "n/a"}
     mask_empty_like = s.str.lower().isin(empty_markers)
 
@@ -57,12 +56,10 @@ def clean_ned_column(df, col_name):
     mask_footer_text = mask_no_digits & approx_footer
 
     keep_mask = ~(mask_empty_like | mask_footer_text)
-
     df_clean = df.loc[keep_mask].copy()
     df_clean[col_name] = s.loc[keep_mask]
 
     return df_clean
-
 
 # --------- Helpers to read/write per-session files and data ---------
 
@@ -72,13 +69,11 @@ def get_job_id():
         session["job_id"] = str(uuid.uuid4())
     return session["job_id"]
 
-
 def get_path(name):
     """Build a file path in tmp folder for this job."""
     job_id = get_job_id()
     filename = f"{job_id}_{name}.xlsx"
     return os.path.join(TMP_DIR, filename)
-
 
 def save_df(df, name):
     """Save a dataframe for this session."""
@@ -86,12 +81,10 @@ def save_df(df, name):
     df.to_excel(path, index=False)
     return path
 
-
 def load_df(name):
     """Load a dataframe for this session."""
     path = get_path(name)
     return pd.read_excel(path)
-
 
 def save_duplicate_workbook(output_bytesio):
     """Save duplicate-highlight workbook for this session."""
@@ -101,7 +94,6 @@ def save_duplicate_workbook(output_bytesio):
     with open(path, "wb") as f:
         f.write(output_bytesio.getvalue())
     session["duplicate_path"] = path
-
 
 # ---------------- STEP 1 : UPLOAD ----------------
 
@@ -129,7 +121,6 @@ def upload():
         return redirect(url_for("select_columns"))
 
     return render_template("upload.html")
-
 
 # ---------------- STEP 2 : COLUMN SELECTION ----------------
 
@@ -168,7 +159,6 @@ def select_columns():
         portal_cols=portal_cols,
     )
 
-
 # ---------------- STEP 3 : DUPLICATE CHECK ----------------
 
 @app.route("/check_duplicates")
@@ -191,6 +181,7 @@ def check_duplicates():
     if pob_dup or portal_dup:
         # Build Excel file with duplicate NED cells highlighted
         output = BytesIO()
+
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
             pob.to_excel(writer, sheet_name="POB", index=False)
             portal.to_excel(writer, sheet_name="PORTAL", index=False)
@@ -228,25 +219,23 @@ def check_duplicates():
 
     return redirect(url_for("user_inputs"))
 
-
 @app.route("/duplicate_decision", methods=["POST"])
 def duplicate_decision():
     if request.form["decision"] == "reupload":
         return redirect(url_for("upload"))
     return redirect(url_for("user_inputs"))
 
-
 @app.route("/download_duplicates")
 def download_duplicates():
     path = session.get("duplicate_path")
     if not path or not os.path.exists(path):
         return redirect(url_for("upload"))
+
     return send_file(
         path,
         download_name="Uploaded_with_Duplicates_Highlighted.xlsx",
         as_attachment=True,
     )
-
 
 # ---------------- STEP 4 : USER INPUTS ----------------
 
@@ -259,8 +248,8 @@ def user_inputs():
     if request.method == "POST":
         session["inputs"] = request.form.to_dict()
         return redirect(url_for("generate"))
-    return render_template("user_inputs.html")
 
+    return render_template("user_inputs.html")
 
 # ---------------- STEP 5 : PROCESS DATA ----------------
 
@@ -270,6 +259,7 @@ def generate():
         return redirect(url_for("upload"))
 
     inputs = session["inputs"]
+
     pob_ned = session["pob_ned"]
     portal_ned = session["portal_ned"]
     pob_name = session["pob_name"]
@@ -339,28 +329,61 @@ def generate():
         return_count=return_count,
     )
 
-
-# ---------------- STEP 6 : DOWNLOAD ----------------
+# ---------------- STEP 6 : DOWNLOAD (UPDATED: 3 SEPARATE FILES) ----------------
 
 @app.route("/download")
 def download():
-    # Load per-session final dataframes
-    rfm = load_df("rfm_final")
-    manifest = load_df("manifest_final")
-    return_manifest = load_df("return_manifest_final")
+    """
+    Download individual Excel files by type.
 
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        rfm.to_excel(writer, index=False, sheet_name="RFM")
-        manifest.to_excel(writer, index=False, sheet_name="Manifest")
-        return_manifest.to_excel(writer, index=False, sheet_name="Return Manifest")
-    output.seek(0)
+    Usage:
+        /download?type=rfm              -> RFM.xlsx
+        /download?type=manifest         -> Manifest.xlsx
+        /download?type=return_manifest  -> Return_Manifest.xlsx
+    """
+    file_type = request.args.get("type", "rfm")
 
-    return send_file(
-        output,
-        download_name="Final_Output.xlsx",
-        as_attachment=True,
-    )
+    if file_type == "rfm":
+        rfm = load_df("rfm_final")
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            rfm.to_excel(writer, index=False, sheet_name="RFM")
+        output.seek(0)
+        return send_file(
+            output,
+            download_name="RFM.xlsx",
+            as_attachment=True,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    elif file_type == "manifest":
+        manifest = load_df("manifest_final")
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            manifest.to_excel(writer, index=False, sheet_name="Manifest")
+        output.seek(0)
+        return send_file(
+            output,
+            download_name="Manifest.xlsx",
+            as_attachment=True,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    elif file_type == "return_manifest":
+        return_manifest = load_df("return_manifest_final")
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            return_manifest.to_excel(writer, index=False, sheet_name="Return Manifest")
+        output.seek(0)
+        return send_file(
+            output,
+            download_name="Return_Manifest.xlsx",
+            as_attachment=True,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    # Invalid type → back to upload
+    return redirect(url_for("upload"))
 
 
 if __name__ == "__main__":

@@ -1,19 +1,117 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Results</title>
+    <meta charset="UTF-8">
+    <title>Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .download-container {
+            max-width: 500px;
+            margin-left: 10%;          /* about 10% from left edge */
+            margin-top: 40px;          /* small top margin so it is not stuck to top */
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .download-container h2 {
+            margin-bottom: 20px;
+            color: #424040;
+        }
+
+        .stats {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #faf9f9;
+            border-radius: 5px;
+            border-left: 4px transparent #3498db;
+            text-align: left;
+        }
+
+        .stats p {
+            margin: 6px 0;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-download {
+            padding: 10px 20px;
+            font-size: 16px;
+            text-decoration: none;
+            border-radius: 5px;
+            color: #080707;
+            display: block;
+            text-align: center;
+            transition: background 0.2s ease;
+        }
+
+        .btn-rfm {
+            background-color: #f68d24;
+        }
+
+        .btn-rfm:hover {
+            background-color: #93d1f0;
+        }
+
+        .btn-manifest {
+            background-color: #f7f9f8;
+        }
+
+        .btn-manifest:hover {
+            background-color: #1e8449;
+        }
+
+        .btn-return {
+            background-color: #2ebc3f;
+        }
+
+        .btn-return:hover {
+            background-color: #d35400;
+        }
+
+        .btn-secondary {
+            margin-top: 20px;
+            background-color: #7f8c8d;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5f6a6a;
+        }
+    </style>
 </head>
 <body>
-<div class="container">
-    <h2>Processing Result</h2>
+    <div class="download-container">
+        <h2>Export Results</h2>
 
-    <div class="result-box">
-        <p>Records missing in Portal (for RFM): <strong>{{ manifest_count }}</strong></p>
-        <p>Records missing in POB (for Return Manifest): <strong>{{ return_count }}</strong></p>
+        <div class="stats">
+            <p><strong>Manifest Records:</strong> {{ manifest_count }}</p>
+            <p><strong>Return Manifest Records:</strong> {{ return_count }}</p>
+        </div>
+
+        <div class="button-group">
+            <a href="{{ url_for('download') }}?type=rfm" class="btn-download btn-rfm">
+                Download RFM.xlsx
+            </a>
+            <a href="{{ url_for('download') }}?type=manifest" class="btn-download btn-manifest">
+                Download Manifest.xlsx
+            </a>
+            <a href="{{ url_for('download') }}?type=return_manifest" class="btn-download btn-return">
+                Download Return_Manifest.xlsx
+            </a>
+        </div>
+
+        <a href="{{ url_for('upload') }}" class="btn-download btn-secondary">
+            Start New Process
+        </a>
     </div>
-
-    <a class="btn" href="{{ url_for('download') }}">Download Final Output Excel</a>
-</div>
 </body>
 </html>
