@@ -40,8 +40,11 @@ def clean_ned_column(df, col_name):
       * value has no digits at all
       * row lies in the last 15 rows of the file
     """
-    s = df[col_name].astype(str).str.strip()
-    empty_markers = {"", "nan", "none", "null", "na", "n/a"}
+
+    # 🔧 FIX: remove INTERNAL spaces also (2025 MUM 163359 → 2025MUM163359)
+    s = df[col_name].astype(str).str.strip().str.replace(" ", "", regex=False)
+
+    empty_markers = {"", "nan", "none", "null", "na", "n/a", "UNMANNED"}
     mask_empty_like = s.str.lower().isin(empty_markers)
 
     # Values that have no digits at all (pure text)
@@ -179,7 +182,6 @@ def check_duplicates():
     portal_dup = portal_dup_mask.any()
 
     if pob_dup or portal_dup:
-        # Build Excel file with duplicate NED cells highlighted
         output = BytesIO()
 
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -196,13 +198,11 @@ def check_duplicates():
                 fill_type="solid",
             )
 
-            # POB duplicates
             pob_ned_idx = pob.columns.get_loc(pob_ned) + 1
             for i, is_dup in enumerate(pob_dup_mask, start=2):
                 if is_dup:
                     pob_ws.cell(row=i, column=pob_ned_idx).fill = yellow_fill
 
-            # PORTAL duplicates
             portal_ned_idx = portal.columns.get_loc(portal_ned) + 1
             for i, is_dup in enumerate(portal_dup_mask, start=2):
                 if is_dup:
@@ -241,7 +241,6 @@ def download_duplicates():
 
 @app.route("/user_inputs", methods=["GET", "POST"])
 def user_inputs():
-    # Ensure data uploaded and columns selected
     if "pob_ned" not in session or "portal_ned" not in session:
         return redirect(url_for("upload"))
 
@@ -318,7 +317,6 @@ def generate():
         "Destination Point": inputs["return_destination"],
     })
 
-    # Save final dataframes for this session
     save_df(rfm, "rfm_final")
     save_df(manifest, "manifest_final")
     save_df(return_manifest, "return_manifest_final")
@@ -329,18 +327,10 @@ def generate():
         return_count=return_count,
     )
 
-# ---------------- STEP 6 : DOWNLOAD (UPDATED: 3 SEPARATE FILES) ----------------
+# ---------------- STEP 6 : DOWNLOAD ----------------
 
 @app.route("/download")
 def download():
-    """
-    Download individual Excel files by type.
-
-    Usage:
-        /download?type=rfm              -> RFM.xlsx
-        /download?type=manifest         -> Manifest.xlsx
-        /download?type=return_manifest  -> Return_Manifest.xlsx
-    """
     file_type = request.args.get("type", "rfm")
 
     if file_type == "rfm":
@@ -353,7 +343,6 @@ def download():
             output,
             download_name="RFM.xlsx",
             as_attachment=True,
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
     elif file_type == "manifest":
@@ -366,7 +355,6 @@ def download():
             output,
             download_name="Manifest.xlsx",
             as_attachment=True,
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
     elif file_type == "return_manifest":
@@ -379,10 +367,8 @@ def download():
             output,
             download_name="Return_Manifest.xlsx",
             as_attachment=True,
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
 
-    # Invalid type → back to upload
     return redirect(url_for("upload"))
 
 
