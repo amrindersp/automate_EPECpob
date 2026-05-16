@@ -31,35 +31,56 @@ os.makedirs(TMP_DIR, exist_ok=True)
 
 def clean_ned_column(df, col_name):
     """
-    Critical cleaning rules for NED Pass Numbers:
-    - Treat strictly as text
-    - Remove leading/trailing spaces
-    - Remove empty / nan / none / null / na / n/a
-    - Do not assume fixed NED pattern
-    - Automatically ignore footer-type rows:
-      * value has no digits at all
-      * row lies in the last 15 rows of the file
+    Cleans NED column safely.
+
+    This version:
+    ✔ Treats everything as text
+    ✔ Removes hidden spaces/tabs/newlines
+    ✔ Removes internal spaces
+    ✔ Makes uppercase for matching
+    ✔ Keeps valid text values like:
+        - APPLIED
+        - OTHER
+        - RIG
+    ✔ Removes only truly invalid values
+    ✔ Prevents Excel formatting mismatch
     """
 
-    # 🔧 FIX: remove INTERNAL spaces also (2025 MUM 163359 → 2025MUM163359)
-    s = df[col_name].astype(str).str.strip().str.replace(" ", "", regex=False)
+    # Convert everything to text
+    s = df[col_name].astype(str)
 
-    empty_markers = {"", "nan", "none", "null", "na", "n/a", "UNMANNED"}
-    mask_empty_like = s.str.lower().isin(empty_markers)
+    # Convert to uppercase
+    # Example:
+    # 2025mum173538 -> 2025MUM173538
+    s = s.str.upper()
 
-    # Values that have no digits at all (pure text)
-    mask_no_digits = ~s.str.contains(r"\d", regex=True)
+    # Remove leading/trailing spaces
+    s = s.str.strip()
 
-    # Consider last 15 rows as footer zone
-    last_n = 15
-    footer_start_index = max(0, len(df) - last_n)
-    approx_footer = df.index >= footer_start_index
+    # Remove ALL hidden whitespace:
+    # spaces, tabs, line breaks, unicode spaces
+    s = s.str.replace(r"\s+", "", regex=True)
 
-    # Footer-type rows: pure text in footer area
-    mask_footer_text = mask_no_digits & approx_footer
+    # Values to remove completely
+    invalid_values = {
+        "",
+        "NAN",
+        "NONE",
+        "NULL",
+        "NA",
+        "N/A",
+        "OTHER",
+        "RIG",
+        "UNMANNED"
+    }
 
-    keep_mask = ~(mask_empty_like | mask_footer_text)
+    # Keep only valid rows
+    keep_mask = ~s.isin(invalid_values)
+
+    # Create cleaned dataframe
     df_clean = df.loc[keep_mask].copy()
+
+    # Save cleaned values back
     df_clean[col_name] = s.loc[keep_mask]
 
     return df_clean
@@ -110,8 +131,8 @@ def upload():
         pob_file = request.files["pob"]
         portal_file = request.files["portal"]
 
-        pob_df = pd.read_excel(pob_file)
-        portal_df = pd.read_excel(portal_file)
+        pob_df = pd.read_excel(pob_file, dtype=str)
+        portal_df = pd.read_excel(portal_file, dtype=str)
 
         # Store column names only (lightweight) in session
         session["pob_cols"] = list(pob_df.columns)
